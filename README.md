@@ -25,7 +25,8 @@ Open **http://localhost:8080**. To play as several participants on one
 machine, open each one in its **own tab or private window** and click *Join the
 study*. Refreshing a tab keeps your seat.
 
-Run the unit tests (result calculation):
+Run the unit tests (result tally, chat/vote validation, concurrent joins,
+anonymity, config and agents):
 
 ```bash
 docker compose run --rm --no-deps backend python -m pytest -q
