@@ -1,133 +1,113 @@
 # Group Decision Experiment
 
-A small real-time web app for a 3-participant group decision experiment. Three
-players, shown only as **Player A / B / C**, discuss for two rounds and vote
-after each round for who should be the **Decision Maker**. Some seats can be
-filled by simulated (rule-based) agents. Participants can't tell which seats
-are human.
+A real-time web app for a three-participant group decision experiment. Players
+appear only as **Player A / B / C**. They discuss for two rounds and vote after
+each round to elect a **Decision Maker**. Seats can be filled by humans or
+rule-based AI agents, and participants can't tell which is which.
 
-**Stack:** React + TypeScript (Vite) · FastAPI · PostgreSQL · Docker Compose
+**Stack:** React + TypeScript (Vite) + Tailwind CSS v4 · FastAPI · PostgreSQL · Docker Compose
 
-## Run it
+| Discussion | Voting | Results |
+| :---: | :---: | :---: |
+| ![Discussion phase](docs/screenshots/discussion.png) | ![Voting phase](docs/screenshots/voting.png) | ![Results screen](docs/screenshots/results.png) |
+
+## Getting started
+
+Requires Docker.
 
 ```bash
+git clone https://github.com/pscon/chm-decision-experiment.git
+cd chm-decision-experiment
 docker compose up --build
 ```
 
-Open **http://localhost:8080**.
+Open **http://localhost:8080**. To play as several participants on one
+machine, open each one in its **own tab or private window** and click *Join the
+study*. Refreshing a tab keeps your seat.
 
-To demo several humans on one machine, open each participant in its **own tab
-or private window** and click *Join the study*. Each tab is a separate
-participant, and refreshing a tab keeps your seat.
-
-## Switch configuration
-
-Edit [`config.yml`](config.yml), then restart the backend:
-
-```bash
-docker compose restart backend
-```
-
-| Condition         | `participants`            |
-| ----------------- | ------------------------- |
-| 3 humans          | `[human, human, human]`   |
-| 2 humans + 1 AI   | `[human, human, ai]`      |
-| 1 human + 2 AIs   | `[human, ai, ai]`         |
-
-`discussion_seconds` (default 60) and `voting_seconds` (default 20) set the
-timings. Shorter values like 10/8 are handy for a quick run-through.
-
-Unit tests for the result calculation:
+Run the unit tests (result tally, chat/vote validation, concurrent joins,
+anonymity, config and agents):
 
 ```bash
 docker compose run --rm --no-deps backend python -m pytest -q
 ```
 
+## Configuration
+
+Edit [`config.yml`](config.yml), then run `docker compose restart backend`.
+
+| Condition       | `participants`          |
+| --------------- | ----------------------- |
+| 3 humans        | `[human, human, human]` |
+| 2 humans + 1 AI | `[human, human, ai]`    |
+| 1 human + 2 AIs | `[human, ai, ai]`       |
+
+`discussion_seconds` (default 60) and `voting_seconds` (default 20) set the
+timings.
+
 ## How it works
 
-```
-browser ──HTTP/WS──> nginx (:8080) ──> FastAPI (backend:8000) ──> Postgres
-```
+- **Flow:** `waiting → discussion 1 → voting 1 → discussion 2 → voting 2 →
+  results`. The server drives the phases with one task per session and pushes
+  state over WebSockets. The browser countdown uses the server's deadline.
+- **Identity:** `POST /api/join` returns an opaque token. The server works out
+  the player from that token, so clients never choose their own label.
+- **Validation:** the server only accepts chat during discussion (max 300
+  chars) and one vote per round during voting. Duplicate votes are also blocked
+  by a `UNIQUE(session, round, voter)` database constraint.
+- **Concurrency:** a lock around joins prevents overfilled sessions. Votes
+  never advance the phase themselves, so a phase can't be skipped twice.
+- **Storage:** sessions (with a config snapshot), participants, messages and
+  votes are stored in PostgreSQL.
 
-- **Join:** `POST /api/join` returns an opaque token. The browser opens
-  `/ws?token=…`, and the server works out the player from the token. Clients
-  never send their own label.
-- **Server-authoritative flow:** `waiting → discussion 1 → voting 1 →
-  discussion 2 → voting 2 → results`. Each session has a single `run()` task
-  that advances the phases, so a phase can't be advanced twice. Every phase
-  change pushes the full state, including a server `deadline` timestamp. The
-  browser countdown uses that deadline, corrected for the client's clock offset.
-- **Validation (server side):** chat only during discussion (max 300 chars),
-  one vote per round only during voting, and the target must be A/B/C.
-  Duplicates are rejected in memory and again by a `UNIQUE(session, round,
-  voter)` constraint in the database.
-- **Concurrency:** joins go through one lock, so simultaneous joins can't
-  overfill a session. Chat and votes take a per-session lock. When the third
-  vote arrives, the run task is woken; the vote itself never advances the
-  phase.
-- **Persistence:** sessions (with a snapshot of the config/condition),
-  participants (including their type), messages and votes are stored in
-  Postgres.
-
-Code map: [`backend/app/game.py`](backend/app/game.py) (flow and validation),
-[`agents.py`](backend/app/agents.py) (simulated participants),
+Key files: [`game.py`](backend/app/game.py) (flow and validation),
+[`agents.py`](backend/app/agents.py) (AI agents),
 [`results.py`](backend/app/results.py) (tally),
-[`frontend/src/useExperiment.ts`](frontend/src/useExperiment.ts) (WebSocket and
-countdown).
+[`useExperiment.ts`](frontend/src/hooks/useExperiment.ts) (WebSocket client).
 
 ## Design decisions
 
-**Result and tie-break.** Votes from both rounds are added up and the player
-with the most total votes wins. On a tie, the round-2 votes among the tied
-players decide. If they're still tied, player order (A, then B, then C)
-decides. Round-1 numbers are hidden until the end, and the final screen shows
-round 1, round 2 and totals for everyone. Self-votes are allowed.
+**Result and tie-break.** Votes from both rounds are added up and the most
+votes wins. A tie goes to the round-2 votes among the tied players, then to
+player order (A → B → C). Round-1 counts stay hidden until the final screen.
+Self-votes are allowed.
 
-**Blind condition.** Participant types live only on the server, in memory and
-in the `participants.kind` column. They never appear in API responses,
-WebSocket messages or the UI. Configured seat types are mapped onto
-**shuffled** labels per session, so the AI isn't always "Player C". The
-waiting room doesn't show how many people are still missing, because that
-would reveal how many seats are AI.
+**Keeping AI seats hidden.** Participant types exist only on the server. They
+never appear in API responses, WebSocket messages or the UI. Seat types are
+mapped to shuffled labels each session, and the waiting room doesn't show how
+many people are still missing.
 
-**Simulated agents (rule-based, no API key).** Each agent:
-- starts with a random favourite (usually another player, ~30% itself)
-- sends 2–3 short, casual, templated messages at random times during each
-  discussion
-- reads the chat for mentions ("Player B", a bare "B", "I can do it") and
-  replies within a few seconds when it's addressed directly
-- tends to agree with suggestions (~60%), which makes the group converge
-- votes after a random 2–8 s "thinking" delay for whoever has the most support
-  in the chat, falling back to its favourite
+**Simulated agents.** These are rule-based and need no API key. Each agent:
 
-Agents go through exactly the same chat and vote checks as humans. An LLM
-could be plugged into `RuleBasedAgent.compose()` later.
+- starts with a random favourite
+- sends 2–3 templated messages per round
+- replies when it's mentioned
+- tends to agree with suggestions
+- votes after a short delay for whoever has the most support in the chat
 
-**Refresh, disconnects, stalled votes.**
-- *Refresh:* the token is kept in `sessionStorage`, so reloading reconnects to
-  the same seat and gets the full current state (chat history, your vote,
-  timer).
-- *Disconnect:* the client retries every 1.5 s. The experiment keeps running
-  without anyone being dropped.
-- *Stalled votes:* voting ends early once all 3 votes are in. Otherwise it
+Agents go through the same checks as humans.
+
+**Edge cases.**
+- *Refresh:* the token is kept in `sessionStorage`, so the player rejoins with
+  the full state.
+- *Disconnect:* the client reconnects automatically, and the game keeps going.
+- *Missing votes:* voting closes early once all 3 votes are in. Otherwise it
   closes after `voting_seconds`, and missing votes count as abstentions.
-- *Server restart:* live state is in memory, so sessions that were running are
-  marked `aborted` on startup. Browsers with an old token go back to the join
-  screen.
+- *Server restart:* sessions that were running are marked `aborted`.
 
-## Trade-offs / not done (4-hour scope)
+## Trade-offs
 
-- **Single backend process.** The live state is in memory, which keeps the code
-  simple. Scaling out would need shared state (e.g. Postgres row locks or
-  Redis pub/sub) and resumable sessions.
-- If a human leaves the **waiting room**, their seat isn't released (no
-  heartbeat), so the session starts with a no-show.
-- No authentication or consent flow, no admin/export UI (query Postgres
-  directly), and no chat rate limiting.
-- Agent language is template-based, so it can repeat itself in long sessions.
-- Database credentials in `docker-compose.yml` are local demo values, and the
-  database isn't exposed outside Docker.
+- A single backend process with live state in memory. Scaling out would need
+  shared state (e.g. Redis) and resumable sessions.
+- Seats aren't released if someone leaves the waiting room (no heartbeat).
+- No authentication, admin/export UI or chat rate limiting.
+- Agent messages are templated and can repeat. An LLM could plug into
+  `RuleBasedAgent.compose()`.
 
 ## AI usage
 
 See [`ai_prompts.md`](ai_prompts.md).
+
+## Author
+
+Developed by [Paul Ekunola](https://www.linkedin.com/in/paul-ekunola).

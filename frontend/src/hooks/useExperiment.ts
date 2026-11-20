@@ -1,27 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ClientAction, ServerEvent, SessionState } from "./types";
-
-const TOKEN_KEY = "experiment-token";
-
-// sessionStorage: a refresh keeps your seat, while each new tab / window is a
-// new participant (handy for demoing three players on one machine).
-export const tokenStore = {
-  get: () => sessionStorage.getItem(TOKEN_KEY),
-  set: (token: string) => sessionStorage.setItem(TOKEN_KEY, token),
-  clear: () => sessionStorage.removeItem(TOKEN_KEY),
-};
-
-export async function joinExperiment(): Promise<string> {
-  const res = await fetch("/api/join", { method: "POST" });
-  if (!res.ok) throw new Error(`Join failed (${res.status})`);
-  const { token } = await res.json();
-  return token;
-}
-
-function socketUrl(token: string) {
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${location.host}/ws?token=${encodeURIComponent(token)}`;
-}
+import { socketUrl } from "../lib/api";
+import type { ClientAction, ServerEvent, SessionState } from "../types";
 
 /** Keeps a WebSocket to the server open and mirrors the session state it sends. */
 export function useExperiment(token: string, onInvalidToken: () => void) {
@@ -80,16 +59,4 @@ export function useExperiment(token: string, onInvalidToken: () => void) {
   }, []);
 
   return { state, connected, error, clockOffset, send };
-}
-
-/** Seconds left until `deadline` (server time), re-rendering a few times a second. */
-export function useCountdown(deadline: number | null, clockOffset: number) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (deadline == null) return;
-    const id = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(id);
-  }, [deadline]);
-  if (deadline == null) return null;
-  return Math.max(0, Math.ceil((deadline - (now + clockOffset)) / 1000));
 }
