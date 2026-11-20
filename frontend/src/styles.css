@@ -1,0 +1,193 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1f2933;
+  background: #f4f5f7;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 16px 0 8px;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+button {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #fff;
+  color: #2563eb;
+}
+
+button.selected {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.badge {
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
+}
+
+.chat {
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+.chat-log {
+  height: 280px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.msg {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.msg-author {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.msg.mine .msg-author {
+  color: #2563eb;
+}
+
+.round-divider {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid #e1e4e8;
+}
+
+.chat-input input {
+  flex: 1;
+  font: inherit;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.vote-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.winner {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+tr.highlight td {
+  background: #ecfdf5;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e1e4e8;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

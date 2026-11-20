@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      # Local-only demo credentials; the database is not exposed outside Docker.
+      POSTGRES_USER: experiment
+      POSTGRES_PASSWORD: experiment
+      POSTGRES_DB: experiment
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U experiment -d experiment"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://experiment:experiment@db:5432/experiment
+      CONFIG_PATH: /app/config.yml
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

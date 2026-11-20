@@ -1,0 +1,19 @@
+# Experiment configuration. Edit, then restart the backend:
+#   docker compose restart backend
+#
+# `participants` lists the type of each of the three seats: "human" or "ai".
+# Exactly three entries, at least one human. Seats are mapped to the labels
+# Player A/B/C in a random order per session, so AI agents don't always get
+# the same letter.
+#
+#   3 humans:            [human, human, human]
+#   2 humans + 1 AI:     [human, human, ai]
+#   1 human + 2 AIs:     [human, ai, ai]
+participants: [human, human, ai]
+
+# Length of each discussion round (there are always 2 rounds).
+discussion_seconds: 60
+
+# Voting closes early once all three votes are in; otherwise it closes after
+# this many seconds and missing votes count as abstentions.
+voting_seconds: 20
